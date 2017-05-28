@@ -7,26 +7,36 @@ import (
 	"strings"
 )
 
+// SendMail type
 type SendMail struct {
-	ToAddress   map[string]string // Required *
-	FromAddress string            // Required *
-	Subject     string            // Required *
-	Body        string            // Required *
+	toAddress   map[string]string // Required *
+	fromAddress string            // Required *
+	subject     string            // Required *
+	body        string            // Required *
 	// attachments map[string][]byte
+}
+
+// Create a new SendMail
+func New(from, subject, body string) *SendMail {
+	return &SendMail{
+		fromAddress: from,
+		subject:     subject,
+		body:        body,
+	}
 }
 
 // Add an email address and name to, toAddress field
 func (s *SendMail) AddToAddress(name string, email string) (bool, error) {
-	curLen := len(s.ToAddress)
+	curLen := len(s.toAddress)
 	if curLen == 0 {
-		s.ToAddress = make(map[string]string)
+		s.toAddress = make(map[string]string)
 	}
 
-	if em, ok := s.ToAddress[name]; ok && em != email { // Check if to address already exists
+	if em, ok := s.toAddress[name]; ok && em != email { // Check if to address already exists
 		return false, errors.New("To address already exists")
 	}
-	s.ToAddress[name] = email
-	newLen := len(s.ToAddress)
+	s.toAddress[name] = email
+	newLen := len(s.toAddress)
 
 	return newLen > curLen, nil
 }
@@ -34,13 +44,13 @@ func (s *SendMail) AddToAddress(name string, email string) (bool, error) {
 // Check if all the required fields have a value
 func (s *SendMail) validate() error {
 	var err error
-	if l := len(s.ToAddress); l == 0 {
+	if l := len(s.toAddress); l == 0 {
 		err = errors.New("Missing to address")
-	} else if s.FromAddress == "" {
+	} else if s.fromAddress == "" {
 		err = errors.New("Missing from address")
-	} else if s.Subject == "" {
+	} else if s.subject == "" {
 		err = errors.New("Missing subject")
-	} else if s.Body == "" {
+	} else if s.body == "" {
 		err = errors.New("Missing body")
 	}
 
@@ -59,17 +69,17 @@ func (s *SendMail) Send() (bool, error) {
 
 	// Convert toAddress map to sendmail to address string
 	var toAddresses = ""
-	for name, address := range s.ToAddress {
+	for name, address := range s.toAddress {
 		toAddresses += name + " <" + address + ">, "
 	}
 	toAddresses = strings.TrimRight(toAddresses, ", ")
 
 	// Create sendmail message
 	var msg = "To: " + toAddresses
-	msg += "Subject: " + s.Subject + "\n"
-	msg += s.Body + "\n"
+	msg += "Subject: " + s.subject + "\n"
+	msg += s.body + "\n"
 
-	sendmail := exec.Command("sendmail", "-f", s.FromAddress, toAddresses)
+	sendmail := exec.Command("sendmail", "-f", s.fromAddress, toAddresses)
 	stdin, err := sendmail.StdinPipe()
 	if err != nil {
 		return success, err

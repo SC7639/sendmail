@@ -6,7 +6,7 @@ import (
 )
 
 func TestAddToAddress(t *testing.T) {
-	mail := SendMail{}
+	mail := New("", "", "")
 	ok, err := mail.AddToAddress("Test Person", "test_email@test.mail")
 	if err != nil {
 		t.Error(err.Error())
@@ -26,7 +26,7 @@ func TestAddToAddress(t *testing.T) {
 		t.Error("SendMail.AddToAddress failed")
 	}
 
-	l := len(mail.ToAddress)
+	l := len(mail.toAddress)
 	if l != 2 {
 		t.Error("Second email address wasn't added to SendMail")
 	}
@@ -43,7 +43,7 @@ func TestAddToAddress(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	mail := SendMail{}
+	mail := New("", "", "")
 	err := mail.validate()
 	if err == nil {
 		t.Error("Failed to validate to address")
@@ -57,14 +57,16 @@ func TestValidate(t *testing.T) {
 	}
 
 	// Add from address and check for valid subject
-	mail.FromAddress = "test@te.st"
+	mail = New("test@te.st", "", "")
+	mail.AddToAddress("test", "test")
 	err = mail.validate()
 	if err == nil {
 		t.Error("Faild to validate subject")
 	}
 
 	// Add subject and check for valid body
-	mail.Subject = "Test Subject"
+	mail = New("test@te.st", "Test Subject", "")
+	mail.AddToAddress("test", "test")
 	err = mail.validate()
 	if err == nil {
 		t.Error("Failed to validate body")
@@ -72,11 +74,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
-	mail := SendMail{
-		FromAddress: "test@te.st",
-		Subject:     "Test Subject",
-		Body:        "Test body",
-	}
+	mail := New("test@te.st", "Test Subject", "Test body")
 
 	mail.AddToAddress("Test", "test@te.st")
 	mail.AddToAddress("Test2", "test2@te.st")

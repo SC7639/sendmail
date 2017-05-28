@@ -9,7 +9,7 @@ RUN line=$(head -n 1 /etc/hosts) && line2=$(echo $line | awk '{print $2}') && ec
 RUN mkdir -p /go/app/
 
 WORKDIR /go/app
-ADD main.go .
+ADD sendmail.go .
 ADD sendmail_test.go .
 ADD test.sh .
 
