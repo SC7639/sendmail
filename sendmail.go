@@ -118,7 +118,13 @@ func (s *SendMail) Send() (bool, error) {
 	}
 
 	// Add to and from address
-	err = c.Mail(s.fromAddress)
+	var fromEmail = s.fromAddress
+	if strings.Contains(fromEmail, " <") {
+		fromEmail = strings.Split(s.fromAddress, " <")[1]
+		fromEmail = strings.Replace(fromEmail, ">", "", -1)
+	}
+	// log.Println(fromEmail)
+	err = c.Mail(fromEmail)
 	if err != nil {
 		return false, err
 	}
