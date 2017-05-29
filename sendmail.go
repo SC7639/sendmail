@@ -2,8 +2,8 @@ package sendmail
 
 import (
 	"errors"
-	"io/ioutil"
-	"os/exec"
+	"fmt"
+	"net/smtp"
 	"strings"
 )
 
@@ -13,15 +13,19 @@ type SendMail struct {
 	fromAddress string            // Required *
 	subject     string            // Required *
 	body        string            // Required *
+	auth        smtp.Auth
+	headers     map[string]string
+	servername  string // Required *
 	// attachments map[string][]byte
 }
 
 // Create a new SendMail
-func New(from, subject, body string) *SendMail {
+func New(servername, from, subject, body string) *SendMail {
 	return &SendMail{
 		fromAddress: from,
 		subject:     subject,
 		body:        body,
+		servername:  servername,
 	}
 }
 
@@ -57,58 +61,95 @@ func (s *SendMail) validate() error {
 	return err
 }
 
-// Send email using the send mail command
+// Add a header to the mail header
+func (s *SendMail) AddHeader(name, value string) {
+	if len(s.headers) == 0 {
+		s.headers = make(map[string]string)
+	}
+
+	s.headers[name] = value
+}
+
+// Add auth to send mail
+func (s *SendMail) Auth(username, password, host string) {
+	s.auth = smtp.PlainAuth("", username, password, host)
+}
+
+// Send email using the stmp.Dial
 func (s *SendMail) Send() (bool, error) {
-	var success = false
 	var err error
 
 	err = s.validate()
 	if err != nil {
-		return success, err
+		return false, err
 	}
+
+	s.AddHeader("From", s.fromAddress)
 
 	// Convert toAddress map to sendmail to address string
-	var toAddresses = ""
+	var toAddressesHeader = ""
+	var toAddresses []string
 	for name, address := range s.toAddress {
-		toAddresses += name + " <" + address + ">, "
+		toAddressesHeader += name + " <" + address + ">, "
+		toAddresses = append(toAddresses, address)
 	}
-	toAddresses = strings.TrimRight(toAddresses, ", ")
+	toAddressesHeader = strings.TrimRight(toAddressesHeader, ", ")
+	s.AddHeader("To", toAddressesHeader)
 
-	// Create sendmail message
-	var msg = "To: " + toAddresses
-	msg += "Subject: " + s.subject + "\n"
-	msg += s.body + "\n"
+	s.AddHeader("Subject", s.subject)
 
-	sendmail := exec.Command("sendmail", "-f", s.fromAddress, toAddresses)
-	stdin, err := sendmail.StdinPipe()
+	// Set up message
+	var message = ""
+	for k, v := range s.headers {
+		message += fmt.Sprintf("%s: %s\r\n", k, v)
+	}
+	message += "\r\n" + s.body
+
+	// Connect to the smtp server
+	c, err := smtp.Dial(s.servername)
 	if err != nil {
-		return success, err
+		return false, err
 	}
 
-	stdout, err := sendmail.StdoutPipe() // Combine stdout and stderr
+	// Add to auth
+	err = c.Auth(s.auth)
 	if err != nil {
-		return success, err
+		return false, err
 	}
 
-	err = sendmail.Start() // Start sendmail command
+	// Add to and from address
+	err = c.Mail(s.fromAddress)
 	if err != nil {
-		return success, err
+		return false, err
 	}
 
-	_, err = stdin.Write([]byte(msg)) // Write message to sendmail
+	for _, address := range toAddresses {
+		err = c.Rcpt(address)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// Data
+	w, err := c.Data()
 	if err != nil {
-		stdin.Close()
-		return success, err
-	}
-	stdin.Close()
-
-	sentBytes, _ := ioutil.ReadAll(stdout)
-	sendmail.Wait()
-	if sentBytes == nil || string(sentBytes) == "" {
-		success = true
-	} else {
-		err = errors.New(string(sentBytes))
+		return false, err
 	}
 
-	return success, err
+	_, err = w.Write([]byte(message))
+	if err != nil {
+		return false, err
+	}
+
+	err = w.Close()
+	if err != nil {
+		return false, err
+	}
+
+	err = c.Quit()
+	if err != nil {
+		return false, err
+	}
+
+	return true, err
 }

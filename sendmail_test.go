@@ -1,12 +1,9 @@
 package sendmail
 
-import (
-	"log"
-	"testing"
-)
+import "testing"
 
 func TestAddToAddress(t *testing.T) {
-	mail := New("", "", "")
+	mail := New("", "", "", "")
 	ok, err := mail.AddToAddress("Test Person", "test_email@test.mail")
 	if err != nil {
 		t.Error(err.Error())
@@ -42,8 +39,23 @@ func TestAddToAddress(t *testing.T) {
 	}
 }
 
+func TestAuth(t *testing.T) {
+	mail := New("", "", "", "")
+	mail.Auth("username", "password", "hostname / ip")
+}
+
+func TestAddHeader(t *testing.T) {
+	mail := New("", "", "", "")
+	mail.AddHeader("Content-Type", "text/html")
+
+	if mail.headers["Content-Type"] != "text/html" {
+		t.Error("Should have added content type to header")
+	}
+}
+
 func TestValidate(t *testing.T) {
-	mail := New("", "", "")
+	// TODO: Complete test with auth and servername
+	mail := New("", "", "", "")
 	err := mail.validate()
 	if err == nil {
 		t.Error("Failed to validate to address")
@@ -57,7 +69,7 @@ func TestValidate(t *testing.T) {
 	}
 
 	// Add from address and check for valid subject
-	mail = New("test@te.st", "", "")
+	mail = New("", "test@te.st", "", "")
 	mail.AddToAddress("test", "test")
 	err = mail.validate()
 	if err == nil {
@@ -65,7 +77,7 @@ func TestValidate(t *testing.T) {
 	}
 
 	// Add subject and check for valid body
-	mail = New("test@te.st", "Test Subject", "")
+	mail = New("", "test@te.st", "Test Subject", "")
 	mail.AddToAddress("test", "test")
 	err = mail.validate()
 	if err == nil {
@@ -74,13 +86,20 @@ func TestValidate(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
-	mail := New("test@te.st", "Test Subject", "Test body")
+	mail := New(
+		"(hostname / ip) :port",
+		"fromAddr",
+		"subject",
+		"Body content",
+	)
 
-	mail.AddToAddress("Test", "test@te.st")
+	mail.AddToAddress("Test", "test@test.com")
 	mail.AddToAddress("Test2", "test2@te.st")
+
+	mail.Auth("test@te.st", "passwd", "hostname / ip")
+
 	_, err := mail.Send()
 	if err != nil {
-		log.Println(err)
 		t.Error(err)
 	}
 }
