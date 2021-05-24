@@ -150,7 +150,7 @@ func (s *SendMail) Send() (bool, error) {
 
 	err = w.Close()
 	if err != nil {
-		return false, errors.Wrao(err, "Failed to close writter")
+		return false, errors.Wrap(err, "Failed to close writter")
 	}
 
 	err = c.Quit()
