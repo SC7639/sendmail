@@ -81,7 +81,7 @@ func (s *SendMail) Send() (bool, error) {
 
 	err = s.validate()
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "Failed to send mail")
 	}
 
 	s.AddHeader("From", s.fromAddress)
@@ -108,13 +108,13 @@ func (s *SendMail) Send() (bool, error) {
 	// Connect to the smtp server
 	c, err := smtp.Dial(s.servername)
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "Failed to connect to smtp server")
 	}
 
 	// Add to auth
 	err = c.Auth(s.auth)
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "Filed to add auth")
 	}
 
 	// Add to and from address
@@ -126,35 +126,35 @@ func (s *SendMail) Send() (bool, error) {
 	// log.Println(fromEmail)
 	err = c.Mail(fromEmail)
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "Failed to add from email address")
 	}
 
 	for _, address := range toAddresses {
 		err = c.Rcpt(address)
 		if err != nil {
-			return false, err
+			return false, errors.Wrap(err, "Failed to add recipient to email")
 		}
 	}
 
 	// Data
 	w, err := c.Data()
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "Failed get mail writter")
 	}
 
 	_, err = w.Write([]byte(message))
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "Failed to write message")
 	}
 
 	err = w.Close()
 	if err != nil {
-		return false, err
+		return false, errors.Wrao(err, "Failed to close writter")
 	}
 
 	err = c.Quit()
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "Failed to close connection to mail server")
 	}
 
 	return true, err
