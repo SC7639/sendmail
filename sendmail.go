@@ -1,10 +1,11 @@
 package sendmail
 
 import (
-	"errors"
 	"fmt"
 	"net/smtp"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // SendMail type
